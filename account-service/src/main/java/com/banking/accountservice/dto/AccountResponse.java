@@ -1,4 +1,4 @@
-package com.banking.accountservice.dto.dto;
+package com.banking.accountservice.dto;
 
 import com.banking.accountservice.entity.AccountStatus;
 import com.banking.accountservice.entity.AccountType;

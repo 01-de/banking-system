@@ -1,7 +1,7 @@
 package com.banking.accountservice.service;
 
-import com.banking.accountservice.dto.dto.AccountResponse;
-import com.banking.accountservice.dto.dto.CreateAccountRequest;
+import com.banking.accountservice.dto.AccountResponse;
+import com.banking.accountservice.dto.CreateAccountRequest;
 import com.banking.accountservice.entity.Account;
 import com.banking.accountservice.entity.AccountStatus;
 import com.banking.accountservice.entity.AccountType;
