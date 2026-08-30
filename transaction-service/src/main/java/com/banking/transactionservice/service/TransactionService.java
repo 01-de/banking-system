@@ -9,6 +9,7 @@ import com.banking.transactionservice.event.TransactionInitiatedEvent;
 import com.banking.transactionservice.repository.TransactionRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,16 +27,17 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountServiceClient accountServiceClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
 
 
     private static final String TRANSACTION_INITIATED_TOPIC = "transaction.initiated";
     private static final String TRANSACTION_FINISHED_TOPIC = "transaction.finished";
     private static final String TRANSACTION_REFUNDED_TOPIC = "transaction.refunded";
-    
+
     public TransactionResponse transfer(@RequestBody TransferRequest request) {
         log.info("SAGA START - Transfer: {} -> {} amount: {}", request.getSenderAccountNumber(), request.getReceiverAccountNumber(), request.getAmount());
-        accountServiceClient.deductBalance(request.getReceiverAccountNumber(), request.getAmount());
+        accountServiceClient.deductBalance(request.getSenderAccountNumber(), request.getAmount());
         Transaction transaction = new Transaction();
         transaction.setSenderAccountNumber(request.getSenderAccountNumber());
         transaction.setReceiverAccountNumber(request.getReceiverAccountNumber());
@@ -66,6 +68,31 @@ public class TransactionService {
     public List<TransactionResponse> getTransactionHistory(@PathVariable String accountNumber) {
         List<Transaction> transactions = transactionRepository.findBySenderAccountNumberOrderByCreatedAtDesc(accountNumber);
         return transactions.stream().map(transaction -> mapToResponse(transaction)).collect(Collectors.toList());
+    }
+
+    public TransactionResponse verifyOTP(String transactionID, String otp) {
+        log.info("OTP verification for the transaction: {} otp: {}", transactionID, otp);
+        Transaction transaction = transactionRepository.findById(transactionID).orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+
+        String otpKey = "verification:otp:" + transactionID;
+        String storedOtp = redisTemplate.opsForValue().get(otpKey);
+        if (storedOtp == null) {
+            log.warn("OTP expired for the transaction: {}", transactionID);
+            compensateTransaction(transaction, "OTP expired - transaction cancelled and amount refunded");
+            return mapToResponse(transaction);
+        }
+        if (!otp.equals(storedOtp)) {
+            log.warn("OTP mismatch for the transaction: {}", transactionID);
+            redisTemplate.delete(otpKey);
+            blockAccountAndCompensate(transaction, "Wrong OTP entered - transaction cancelled, account blocked for security reasons");
+            return mapToResponse(transaction);
+        }
+
+        //OTP correct - complete transaction
+        log.info("OTP verified - competing transaction: {}", transactionID);
+        redisTemplate.delete(otpKey);
+        completeTransaction();
+        return mapToResponse(transaction);
     }
 
     private TransactionResponse mapToResponse(Transaction transaction) {
