@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @RequiredArgsConstructor
 public class TransactionEventConsumer {
+    private final TransactionService transactionService;
     private final TransactionRepository transactionRepository;
     private final RedisTemplate<String, String> redisTemplate;
     private static final long OTP_EXPIRY_MINUTES = 5;
@@ -68,6 +69,19 @@ public class TransactionEventConsumer {
 
         } catch (Exception e) {
             log.error("Error occurred while consuming verification required event", e);
+        }
+    }
+
+    @KafkaListener(topics = "fraud.check.clean")
+    public void consumeFraudCheckCleanResult(@Payload Map<String, Object> payload) {
+        try {
+            String transactionId = (String) payload.get("transactionId");
+            String accountNumber = (String) payload.get("accountNumber");
+            String reason = (String) payload.get("reason");
+            transactionService.processCleanResult(transactionId);
+
+        } catch (Exception e) {
+            log.error("Error processing fraud check result", e);
         }
     }
 }
