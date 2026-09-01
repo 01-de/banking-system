@@ -19,9 +19,13 @@ public class NotificationService {
             String amount = payload.get("amount").toString();
             String reason = (String) payload.get("reason");
 
-            sendAlert("TRANSACTION VERIFICATION REQUIRED", String.format("Suspicious activity detected on your account. " + "Reason: %s " + "A transaction of %s is pending verification. " + "Your OTP is: %s. Valid for 5 minutes. " + "If this wasn't you - ignore this message.", reason, amount));
+            sendAlert(accountNumber, "TRANSACTION VERIFICATION REQUIRED", String.format("Suspicious activity detected on your account. " + "Reason: %s " + "A transaction of %s is pending verification. " + "Your OTP is: %s. Valid for 5 minutes. " + "If this wasn't you - ignore this message.", reason, amount));
         } catch (Exception e) {
             log.error("Error occurred while consuming OTP generation message", e);
         }
+    }
+
+    private void sendAlert(String accountNumber, String subject, String message) {
+
     }
 }
