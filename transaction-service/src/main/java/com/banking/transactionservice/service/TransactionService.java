@@ -11,6 +11,7 @@ import com.banking.transactionservice.repository.TransactionRepository;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @AllArgsConstructor
+@EnableFeignClients(basePackages = "com.banking.transactionservice.client")
 public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountServiceClient accountServiceClient;
