@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import repository.PaymentRepository;
@@ -24,9 +25,10 @@ import java.util.UUID;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@EnableJpaRepositories(basePackages = "repository")
 public class PaymentService {
-    private static final String PAYMENT_COMPLETED_TOPIC = "payment-completed";
-    private static final String PAYMENT_FAILED_TOPIC = "payment_failed";
+    private static final String PAYMENT_COMPLETED_TOPIC = "payment.completed";
+    private static final String PAYMENT_FAILED_TOPIC = "payment.failed";
     private final PaymentRepository paymentRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     @Value("${razorpay.key-id}")
