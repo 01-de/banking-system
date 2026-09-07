@@ -36,6 +36,12 @@ spec:
             - name: REDIS_PORT
               valueFrom:
                 configMapKeyRef: { name: infra-config, key: REDIS_PORT }
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: REDIS_PASSWORD }
+            - name: REDIS_SSL_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_SSL_ENABLED }
             - name: JWT_PRIVATE_KEY
               valueFrom:
                 secretKeyRef: { name: app-secrets, key: JWT_PRIVATE_KEY }

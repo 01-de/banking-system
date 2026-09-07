@@ -4,14 +4,17 @@ metadata:
   name: infra-config
   namespace: banking-system
 data:
-  KAFKA_BOOTSTRAP_SERVERS: "REPLACE_ME_KAFKA_BOOTSTRAP_SERVERS:9092"
-  REDIS_HOST: "REPLACE_ME_REDIS_HOST"
+  KAFKA_BOOTSTRAP_SERVERS: "dafki31q9rmp2phfl570.any.us-east-1.mpx.prd.cloud.redpanda.com:9092"
+  KAFKA_SECURITY_PROTOCOL: "SASL_SSL"
+  KAFKA_SASL_MECHANISM: "SCRAM-SHA-256"
+  REDIS_HOST: "crucial-starling-85049.upstash.io"
   REDIS_PORT: "6379"
+  REDIS_SSL_ENABLED: "true"
 
-  AUTH_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_auth_db"
-  ACCOUNT_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_account_db"
-  TRANSACTION_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_transaction_db"
-  PAYMENT_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_payment_db"
+  AUTH_DB_URL: "jdbc:postgresql://ep-solitary-math-aeg1tyj8-pooler.c-2.us-east-2.aws.neon.tech:5432/bank_auth_db?sslmode=require"
+  ACCOUNT_DB_URL: "jdbc:postgresql://ep-solitary-math-aeg1tyj8-pooler.c-2.us-east-2.aws.neon.tech:5432/bank_account_db?sslmode=require"
+  TRANSACTION_DB_URL: "jdbc:postgresql://ep-solitary-math-aeg1tyj8-pooler.c-2.us-east-2.aws.neon.tech:5432/bank_transaction_db?sslmode=require"
+  PAYMENT_DB_URL: "jdbc:postgresql://ep-solitary-math-aeg1tyj8-pooler.c-2.us-east-2.aws.neon.tech:5432/bank_payment_db?sslmode=require"
 
   ACCOUNT_SERVICE_URL: "http://account-service:8081"
   TRANSACTION_SERVICE_URL: "http://transaction-service:8082"

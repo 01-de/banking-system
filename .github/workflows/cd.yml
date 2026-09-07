@@ -91,6 +91,9 @@ jobs:
             --from-literal=STRIPE_WEBHOOK_SECRET="${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
             --from-literal=DB_USERNAME="${{ secrets.DB_USERNAME }}" \
             --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            --from-literal=REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
+            --from-literal=KAFKA_USERNAME="${{ secrets.KAFKA_USERNAME }}" \
+            --from-literal=KAFKA_PASSWORD="${{ secrets.KAFKA_PASSWORD }}" \
             --dry-run=client -o yaml | kubectl apply -f -
       - name: Apply service manifests
         run: |
