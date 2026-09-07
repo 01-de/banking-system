@@ -28,6 +28,43 @@ jobs:
   test:
     needs: build-auth-common
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      JWT_PUBLIC_KEY: |-
+        -----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2nl+0a6+wv5u7c+hTTRe
+        B0H0j1mOeZO/z137GcHGFsLI7SkW+qt80hqaXW/UhMjX8YwJENy35BSPQUwNRm35
+        vcUOKqFEYWLFHyRUg2HZVw5OLUm4fx2spefI2KbvrzZcxNuZzPRQ2Rc9S2TbfA+0
+        b/v+lBWXLLvoVrt5Qk/1blxo3IBwhzg5+OljlJfRkDdvRFFDwCgqzlMbIBvJqqQM
+        ElwiBjEziPCuPcwFAR4sBR6HU9+1cgTrE+XYjJFJe7rAeHUo6Gn19V84gWP4JxZe
+        xDmdo9nk3FQGZ0SKSovScuxC+qE2QXc6Lavk6398DiUL4oVQbBuIL8rrDdBmXecY
+        uQIDAQAB
+        -----END PUBLIC KEY-----
+      TRANSACTION_SERVICE_SECRET: ci-test-transaction-service-secret
+      FRAUD_DETECTION_SERVICE_SECRET: ci-test-fraud-detection-service-secret
+      STRIPE_SECRET_KEY: sk_test_ci_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_ci_dummy
     strategy:
       matrix:
         service:
@@ -54,6 +91,16 @@ jobs:
       - name: Re-install auth-common
         working-directory: auth-common
         run: mvn -B install -DskipTests
+      - name: Create service databases
+        env:
+          PGPASSWORD: admin
+        run: |
+          for db in bank_account_db bank_transaction_db bank_payment_db bank_auth_db; do
+            exists=$(psql -h localhost -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$db'")
+            if [ "$exists" != "1" ]; then
+              psql -h localhost -U postgres -c "CREATE DATABASE $db"
+            fi
+          done
       - name: Test (auth-service, no wrapper)
         if: matrix.service == 'auth-service'
         working-directory: auth-service
