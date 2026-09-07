@@ -9,11 +9,23 @@ spring:
     gateway:
       server:
         webflux:
+          global-cors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - "http://localhost:5173"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                allowedHeaders:
+                  - "*"
           routes:
             - id: account-service
               uri: http://localhost:8081
               predicates:
-                - Path=/api/v1/account/**
+                - Path=/api/v1/accounts/**
               filters:
                 - name: RequestRateLimiter
                   args:

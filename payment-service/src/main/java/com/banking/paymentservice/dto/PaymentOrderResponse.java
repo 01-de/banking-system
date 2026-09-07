@@ -13,14 +13,12 @@ import java.math.BigDecimal;
 public class PaymentOrderResponse {
     private String paymentId;
 
-    private String razorpayOrderId;
+    private String stripePaymentIntentId;
     private BigDecimal amount;
     private String currency;
 
     private String status;
 
-
-
-    private String razorpayKeyId;
+    private String clientSecret;
 
 }

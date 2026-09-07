@@ -4,7 +4,7 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: account-service-group
+      group-id: notification-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
@@ -13,15 +13,19 @@ spring:
           json:
             trusted:
               packages: "*"
-              use:
-                type:
-                  headers: false
-              value:
-                default:
-                  type: java.util.HashMap
+            use:
+              type:
+                headers: false
+            value:
+              default:
+                type: java.util.HashMap
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
 
 server:
   port: 8085

@@ -60,6 +60,18 @@ public class AccountService {
         log.info("Blocked account for:{}", accountNumber);
     }
 
+    // Unblock account
+    public void unblockAccount(String accountNumber) {
+        log.info("Unblocking account for:{}", accountNumber);
+        Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new RuntimeException("Account not found for accountNumber: " + accountNumber));
+        if (account.getStatus() != AccountStatus.BLOCKED) {
+            throw new RuntimeException("Account is not blocked for accountNumber: " + accountNumber);
+        }
+        account.setStatus(AccountStatus.ACTIVE);
+        accountRepository.save(account);
+        log.info("Unblocked account for:{}", accountNumber);
+    }
+
     // Deduct balance called by Transaction Service
     public void deductBalance(String accountNumber, BigDecimal amount) {
         log.info("Deducting balance from account:{}", accountNumber);

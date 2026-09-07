@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @Table(name = "transaction")
 public class Transaction {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     @Column(nullable = false)
     private String senderAccountNumber;
@@ -42,11 +42,15 @@ public class Transaction {
 
     private String referenceNumber;
 
+    @Column(unique = true)
+    private String idempotencyKey;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     private LocalDateTime completedAt;
 
-
+    @Version
+    private Long version;
 
 }

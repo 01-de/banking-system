@@ -41,6 +41,12 @@ public class AccountController {
         return ResponseEntity.ok("Account blocked Successfully");
     }
 
+    @PutMapping("/{accountNumber}/unblock")
+    public ResponseEntity<String> unblockAccount(@PathVariable String accountNumber) {
+        accountService.unblockAccount(accountNumber);
+        return ResponseEntity.ok("Account unblocked Successfully");
+    }
+
     // Saga step 1 deduct balance
     @PutMapping("/{accountNumber}/deduct")
     public ResponseEntity<String> deductBalance(@PathVariable String accountNumber, @RequestParam BigDecimal amount) {

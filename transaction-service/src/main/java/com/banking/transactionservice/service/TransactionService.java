@@ -5,6 +5,7 @@ import com.banking.transactionservice.dto.TransactionResponse;
 import com.banking.transactionservice.dto.TransferRequest;
 import com.banking.transactionservice.entity.Transaction;
 import com.banking.transactionservice.entity.TransactionStatus;
+import com.banking.transactionservice.entity.TransactionType;
 import com.banking.transactionservice.event.TransactionCompletedEvent;
 import com.banking.transactionservice.event.TransactionInitiatedEvent;
 import com.banking.transactionservice.repository.TransactionRepository;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -44,6 +47,14 @@ public class TransactionService {
     private static final String TRANSACTION_FRAUD_DETECTED_TOPIC = "fraud.detected";
 
     public TransactionResponse transfer(@RequestBody TransferRequest request) {
+        if (request.getIdempotencyKey() != null) {
+            Optional<Transaction> existing = transactionRepository.findByIdempotencyKey(request.getIdempotencyKey());
+            if (existing.isPresent()) {
+                log.info("Idempotency key {} already used for transaction: {} - returning existing", request.getIdempotencyKey(), existing.get().getId());
+                return mapToResponse(existing.get());
+            }
+        }
+
         log.info("SAGA START - Transfer: {} -> {} amount: {}", request.getSenderAccountNumber(), request.getReceiverAccountNumber(), request.getAmount());
         accountServiceClient.deductBalance(request.getSenderAccountNumber(), request.getAmount());
         Transaction transaction = new Transaction();
@@ -51,8 +62,10 @@ public class TransactionService {
         transaction.setReceiverAccountNumber(request.getReceiverAccountNumber());
         transaction.setAmount(request.getAmount());
         transaction.setStatus(TransactionStatus.PROCESSING);
+        transaction.setType(TransactionType.TRANSFER);
         transaction.setDescription(request.getDescription());
         transaction.setReferenceNumber(UUID.randomUUID().toString());
+        transaction.setIdempotencyKey(request.getIdempotencyKey());
         Transaction saved = transactionRepository.save(transaction);
         log.info("Transaction saved as PROCESSING: {}", saved.getId());
 
@@ -74,13 +87,18 @@ public class TransactionService {
     }
 
     public List<TransactionResponse> getTransactionHistory(@PathVariable String accountNumber) {
-        List<Transaction> transactions = transactionRepository.findBySenderAccountNumberOrderByCreatedAtDesc(accountNumber);
-        return transactions.stream().map(transaction -> mapToResponse(transaction)).collect(Collectors.toList());
+        List<Transaction> transactions = transactionRepository.findBySenderAccountNumberOrReceiverAccountNumberOrderByCreatedAtDesc(accountNumber, accountNumber);
+        return transactions.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     public TransactionResponse verifyOTP(String transactionID, String otp) {
         log.info("OTP verification for the transaction: {} otp: {}", transactionID, otp);
         Transaction transaction = transactionRepository.findById(transactionID).orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+
+        if (transaction.getStatus() != TransactionStatus.PENDING_VERIFICATION) {
+            log.warn("Transaction {} not PENDING_VERIFICATION - already resolved, skipping", transactionID);
+            return mapToResponse(transaction);
+        }
 
         String otpKey = "verification:otp:" + transactionID;
         String storedOtp = redisTemplate.opsForValue().get(otpKey);
@@ -107,11 +125,34 @@ public class TransactionService {
 
     public void processCleanResult(String transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId).orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
-        if (transaction.getStatus() == TransactionStatus.PROCESSING) {
+        if (transaction.getStatus() != TransactionStatus.PROCESSING) {
             log.warn("Transaction {} not PROCESSING - skipping", transactionId);
             return;
         }
         completeTransaction(transaction);
+    }
+
+    public void processFraudCheckFailure(String transactionId, String reason) {
+        Transaction transaction = transactionRepository.findById(transactionId).orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+        if (transaction.getStatus() != TransactionStatus.PROCESSING) {
+            log.warn("Transaction {} not PROCESSING - skipping fraud check failure compensation", transactionId);
+            return;
+        }
+        compensateTransaction(transaction, "Fraud check failed: " + reason);
+    }
+
+    public void handleOtpExpired(String transactionId) {
+        transactionRepository.findById(transactionId).ifPresent(transaction -> {
+            if (transaction.getStatus() != TransactionStatus.PENDING_VERIFICATION) {
+                log.info("Transaction {} not PENDING_VERIFICATION - skipping expiry compensation", transactionId);
+                return;
+            }
+            try {
+                compensateTransaction(transaction, "OTP verification expired - no action taken");
+            } catch (ObjectOptimisticLockingFailureException e) {
+                log.warn("Transaction {} already resolved concurrently - skipping expiry compensation", transactionId);
+            }
+        });
     }
 
     private void compensateTransaction(Transaction transaction, String reason) {
