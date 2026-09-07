@@ -2,14 +2,14 @@ spring:
   application:
     name: transaction-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/bank_transaction_db
-    username: postgres
-    password: admin
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/bank_transaction_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   jpa:
     hibernate:
       ddl-auto: update
@@ -18,7 +18,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: transaction-service-group
       auto-offset-reset: earliest
@@ -49,11 +49,11 @@ server:
 
 account:
   service:
-    url: http://localhost:8081
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8081}
 
 auth:
   service:
-    url: http://localhost:8086
+    url: ${AUTH_SERVICE_URL:http://localhost:8086}
 
 jwt:
   public-key: ${JWT_PUBLIC_KEY}

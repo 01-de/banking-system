@@ -19,6 +19,7 @@ public class KeyConfig {
         String base64 = privateKeyPem
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
+                .replace("\\n", "")
                 .replaceAll("\\s", "");
         byte[] decoded = Base64.getDecoder().decode(base64);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
@@ -30,6 +31,7 @@ public class KeyConfig {
         String base64 = publicKeyPem
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
+                .replace("\\n", "")
                 .replaceAll("\\s", "");
         byte[] decoded = Base64.getDecoder().decode(base64);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");

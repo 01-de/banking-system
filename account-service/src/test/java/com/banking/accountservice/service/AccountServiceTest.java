@@ -125,6 +125,38 @@ class AccountServiceTest {
     }
 
     @Test
+    void getMyAccounts_returnsOnlyAccountsOwnedByCaller() {
+        Account secondAccount = new Account();
+        secondAccount.setId("acc-2");
+        secondAccount.setUserId(OWNER_USER_ID);
+        secondAccount.setAccountHolderName("John Doe");
+        secondAccount.setAccountNumber("987654321098");
+        secondAccount.setEmail("john@example.com");
+        secondAccount.setPhone("+1234567890");
+        secondAccount.setAccountType(AccountType.CURRENT);
+        secondAccount.setStatus(AccountStatus.ACTIVE);
+        secondAccount.setBalance(new BigDecimal("1200.00"));
+        secondAccount.setDailyTransactionLimit(new BigDecimal("300000"));
+
+        when(accountRepository.findByUserId(OWNER_USER_ID)).thenReturn(List.of(account, secondAccount));
+
+        List<AccountResponse> responses = accountService.getMyAccounts(ownerAuthentication(OWNER_USER_ID));
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses).extracting(AccountResponse::getAccountNumber)
+                .containsExactlyInAnyOrder("123456789012", "987654321098");
+    }
+
+    @Test
+    void getMyAccounts_returnsEmptyListWhenNoAccountsOwned() {
+        when(accountRepository.findByUserId(OWNER_USER_ID)).thenReturn(List.of());
+
+        List<AccountResponse> responses = accountService.getMyAccounts(ownerAuthentication(OWNER_USER_ID));
+
+        assertThat(responses).isEmpty();
+    }
+
+    @Test
     void getAccount_returnsMappedResponseWhenFound() {
         when(accountRepository.findByAccountNumber("123456789012")).thenReturn(Optional.of(account));
 

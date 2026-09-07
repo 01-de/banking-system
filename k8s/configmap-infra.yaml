@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infra-config
+  namespace: banking-system
+data:
+  KAFKA_BOOTSTRAP_SERVERS: "REPLACE_ME_KAFKA_BOOTSTRAP_SERVERS:9092"
+  REDIS_HOST: "REPLACE_ME_REDIS_HOST"
+  REDIS_PORT: "6379"
+
+  AUTH_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_auth_db"
+  ACCOUNT_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_account_db"
+  TRANSACTION_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_transaction_db"
+  PAYMENT_DB_URL: "jdbc:postgresql://REPLACE_ME_DB_HOST:5432/bank_payment_db"
+
+  ACCOUNT_SERVICE_URL: "http://account-service:8081"
+  TRANSACTION_SERVICE_URL: "http://transaction-service:8082"
+  PAYMENT_SERVICE_URL: "http://payment-service:8083"
+  AUTH_SERVICE_URL: "http://auth-service:8086"

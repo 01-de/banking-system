@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -43,6 +45,12 @@ public class AccountService {
         log.info("Saved account for:{}", savedAccount.getAccountNumber());
         return mapToResponse(savedAccount);
 
+    }
+
+    public List<AccountResponse> getMyAccounts(Authentication authentication) {
+        return accountRepository.findByUserId(authentication.getName()).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     public AccountResponse getAccount(String accountNumber, Authentication authentication) {

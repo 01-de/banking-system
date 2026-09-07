@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-detection-service
+  namespace: banking-system
+  labels:
+    app: fraud-detection-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud-detection-service
+  template:
+    metadata:
+      labels:
+        app: fraud-detection-service
+    spec:
+      containers:
+        - name: fraud-detection-service
+          image: ghcr.io/01-de/banking-system-fraud-detection-service:latest
+          ports:
+            - containerPort: 8084
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_HOST }
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_PORT }
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: ACCOUNT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: ACCOUNT_SERVICE_URL }
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: AUTH_SERVICE_URL }
+            - name: FRAUD_DETECTION_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: FRAUD_DETECTION_SERVICE_SECRET }
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 20
+            periodSeconds: 10

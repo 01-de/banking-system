@@ -11,12 +11,22 @@ import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
+import org.springframework.web.cors.reactive.CorsUtils;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
 import java.security.interfaces.RSAPublicKey;
 
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
+
+    private static Mono<ServerWebExchangeMatcher.MatchResult> isPreFlightRequest(ServerWebExchange exchange) {
+        return CorsUtils.isPreFlightRequest(exchange.getRequest())
+                ? ServerWebExchangeMatcher.MatchResult.match()
+                : ServerWebExchangeMatcher.MatchResult.notMatch();
+    }
 
     @Bean
     public ReactiveJwtDecoder reactiveJwtDecoder(@Value("${jwt.public-key}") String publicKeyPem) {
@@ -29,6 +39,7 @@ public class SecurityConfig {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchange -> exchange
+                        .matchers(SecurityConfig::isPreFlightRequest).permitAll()
                         .pathMatchers("/api/v1/auth/**").permitAll()
                         .pathMatchers("/api/v1/payments/webhook").permitAll()
                         .pathMatchers("/actuator/health").permitAll()

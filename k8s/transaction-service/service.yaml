@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-service
+  namespace: banking-system
+spec:
+  selector:
+    app: transaction-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP

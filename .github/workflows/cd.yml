@@ -1,0 +1,108 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  build-auth-common:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-${{ runner.os }}-
+      - name: Install auth-common
+        working-directory: auth-common
+        run: mvn -B install -DskipTests
+
+  build-and-push:
+    needs: build-auth-common
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service:
+          - account-service
+          - transaction-service
+          - payment-service
+          - fraud-detection-service
+          - notification-service
+          - auth-service
+          - api-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service }}/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/banking-system-${{ matrix.service }}:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/banking-system-${{ matrix.service }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
+      - name: Apply namespace and config
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap-infra.yaml
+      - name: Create or update app-secrets
+        run: |
+          kubectl create secret generic app-secrets \
+            --namespace banking-system \
+            --from-literal=JWT_PRIVATE_KEY="${{ secrets.JWT_PRIVATE_KEY }}" \
+            --from-literal=JWT_PUBLIC_KEY="${{ secrets.JWT_PUBLIC_KEY }}" \
+            --from-literal=TRANSACTION_SERVICE_SECRET="${{ secrets.TRANSACTION_SERVICE_SECRET }}" \
+            --from-literal=FRAUD_DETECTION_SERVICE_SECRET="${{ secrets.FRAUD_DETECTION_SERVICE_SECRET }}" \
+            --from-literal=STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            --from-literal=STRIPE_WEBHOOK_SECRET="${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
+            --from-literal=DB_USERNAME="${{ secrets.DB_USERNAME }}" \
+            --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+      - name: Apply service manifests
+        run: |
+          for svc in auth-service account-service transaction-service payment-service fraud-detection-service notification-service api-gateway; do
+            kubectl apply -f k8s/$svc/deployment.yaml -f k8s/$svc/service.yaml
+          done
+          kubectl apply -f k8s/ingress.yaml
+      - name: Roll out images for this commit
+        run: |
+          for svc in auth-service account-service transaction-service payment-service fraud-detection-service notification-service api-gateway; do
+            kubectl set image deployment/$svc $svc=ghcr.io/${{ env.IMAGE_OWNER }}/banking-system-$svc:sha-${{ github.sha }} -n banking-system
+          done
+          for svc in auth-service account-service transaction-service payment-service fraud-detection-service notification-service api-gateway; do
+            kubectl rollout status deployment/$svc -n banking-system --timeout=180s
+          done

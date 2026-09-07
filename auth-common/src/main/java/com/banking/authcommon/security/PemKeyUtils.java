@@ -16,6 +16,7 @@ public final class PemKeyUtils {
         String base64 = pem
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
+                .replace("\\n", "")
                 .replaceAll("\\s", "");
         byte[] decoded = Base64.getDecoder().decode(base64);
         try {

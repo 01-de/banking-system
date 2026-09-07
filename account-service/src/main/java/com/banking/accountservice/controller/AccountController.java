@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -26,6 +27,12 @@ public class AccountController {
     @PostMapping
     public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody CreateAccountRequest request, Authentication authentication) {
         return ResponseEntity.status(HttpStatus.CREATED).body(accountService.createAccount(request, authentication.getName()));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping
+    public ResponseEntity<List<AccountResponse>> getMyAccounts(Authentication authentication) {
+        return ResponseEntity.ok(accountService.getMyAccounts(authentication));
     }
 
     @PreAuthorize("isAuthenticated()")
