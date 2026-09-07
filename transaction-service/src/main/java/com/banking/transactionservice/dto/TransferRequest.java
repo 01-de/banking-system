@@ -23,5 +23,6 @@ public class TransferRequest {
     private BigDecimal amount;
     @NotNull
     private String description;
+    private String idempotencyKey;
 
 }

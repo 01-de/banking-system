@@ -10,7 +10,7 @@ import java.util.Map;
 @Slf4j
 @Service
 public class NotificationService {
-    @KafkaListener(topics = "transaction.otp.generation")
+    @KafkaListener(topics = "transaction.otp.generated")
     public void consumeOtpGeneration(@Payload Map<String, Object> payload) {
         try {
             String transactionId = (String) payload.get("transactionId");
@@ -30,7 +30,7 @@ public class NotificationService {
         try {
             String senderAccount =  (String) payload.get("senderAccountNumber");
             String receiverAccount =  (String) payload.get("receiverAccountNumber");
-            String amount = (String) payload.get("amount");
+            String amount = payload.get("amount").toString();
             //Debit alert
             sendAlert(senderAccount, "DEBIT ALERT", String.format("%s debited from account %s", amount, senderAccount));
 
@@ -57,7 +57,7 @@ public class NotificationService {
     public void consumeTransactionRefunded(@Payload Map<String, Object> payload) {
         try {
             String senderAccount =  (String) payload.get("senderAccountNumber");
-            String amount = (String) payload.get("amount");
+            String amount = payload.get("amount").toString();
             String reason = (String) payload.get("reason");
             sendAlert(senderAccount, "REFUND PROCESSED", String.format("A transaction of %s has been refunded to your account. " + "Reason: %s", amount, reason));
         } catch (Exception e) {
@@ -69,7 +69,7 @@ public class NotificationService {
     public void consumePaymentCompleted(@Payload Map<String, Object> payload) {
         try {
             String accountNumber = (String) payload.get("accountNumber");
-            String amount = (String) payload.get("amount");
+            String amount = payload.get("amount").toString();
             String razorpayPaymentId = (String) payload.get("razorpayPaymentId");
             sendAlert(accountNumber, "PAYMENT COMPLETED", String.format("A payment of %s has been completed for your account." + "Razorpay ID: %s", amount, razorpayPaymentId));
         } catch (Exception e) {
@@ -80,7 +80,7 @@ public class NotificationService {
     public void consumePaymentFailed(@Payload Map<String, Object> payload) {
         try {
             String accountNumber = (String) payload.get("accountNumber");
-            String amount = (String) payload.get("amount");
+            String amount = payload.get("amount").toString();
             String reason = (String) payload.get("reason");
             sendAlert(accountNumber, "PAYMENT FAILED", String.format("A payment of %s has failed for your account. " + "Reason: %s", amount, reason));
         } catch (Exception e) {

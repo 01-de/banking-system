@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JpaBuddyIdeaProjectConfig" ddlLastScriptDirectoryPath="$PROJECT_DIR$/account-service">
+    <option name="reLastEntityCreationPackage" value="account-service/src/main/java/com/banking/accountservice" />
+    <option name="reverseEngineeringLastDbConnectionId" value="51ef2273-2715-4ee7-bfa9-fbc2bc807079" />
+  </component>
+</project>

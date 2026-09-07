@@ -5,6 +5,7 @@ import com.banking.frauddetectionservice.model.FraudCheckResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -20,13 +21,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@EnableFeignClients(basePackages = "com.banking.frauddetectionservice.client")
 public class FraudDetectionService {
     private static final String VERIFICATION_REQUIRED_TOPIC = "verification.required";
     private static final String FRAUD_CHECK_CLEAN_RESULT_TOPIC = "fraud.check.clean";
+    private static final String FRAUD_CHECK_FAILED_TOPIC = "fraud.check.failed";
     private static final String AVG_KEY_PREFIX = "fraud:avg_amount:";
     private final AccountServiceClient accountServiceClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
     @Value("${fraud.max-transactions-per-minute}")
     private int maxTransactionPerMinute;
     @Value("${fraud.suspicious-amount-multiplier}")
@@ -38,7 +41,7 @@ public class FraudDetectionService {
     public void checkTransaction(Map<String, Object> payload) {
         String transactionId = (String) payload.get("transactionId");
         String accountNumber = (String) payload.get("senderAccountNumber");
-        BigDecimal amount = new BigDecimal((String) payload.get("amount"));
+        BigDecimal amount = new BigDecimal(payload.get("amount").toString());
 
         //Fetch real balance from Account Service
         BigDecimal senderBalance = accountServiceClient.getAccountBalance(accountNumber);
@@ -62,6 +65,17 @@ public class FraudDetectionService {
             kafkaTemplate.send(FRAUD_CHECK_CLEAN_RESULT_TOPIC, transactionId, transactionCleanEvent);
         }
 
+    }
+
+    public void publishFraudCheckFailed(Map<String, Object> payload, String reason) {
+        String transactionId = (String) payload.get("transactionId");
+        String senderAccountNumber = (String) payload.get("senderAccountNumber");
+        Map<String, Object> failureEvent = new HashMap<>();
+        failureEvent.put("transactionId", transactionId);
+        failureEvent.put("senderAccountNumber", senderAccountNumber);
+        failureEvent.put("reason", reason);
+        kafkaTemplate.send(FRAUD_CHECK_FAILED_TOPIC, transactionId, failureEvent);
+        log.info("Published fraud.check.failed for transaction: {} reason: {}", transactionId, reason);
     }
 
     private FraudCheckResult performFraudChecks(String accountNumber, BigDecimal amount, BigDecimal senderBalance) {

@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "accounts")
+@Table(name = "account")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -39,6 +39,7 @@ public class Account {
     @Column(nullable = false)
     private AccountType accountType;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AccountStatus status;
 

@@ -9,6 +9,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -45,16 +46,22 @@ public class TransactionEventConsumer {
                 return;
             }
 
+            //Claim the transition first so a concurrent redelivery loses the optimistic-lock race
+            //before it can overwrite the OTP or re-publish the notification
+            transaction.setStatus(TransactionStatus.PENDING_VERIFICATION);
+            try {
+                transactionRepository.save(transaction);
+            } catch (ObjectOptimisticLockingFailureException e) {
+                log.warn("Transaction {} already being verified by a concurrent delivery - skipping", transactionId);
+                return;
+            }
+
             String otp = String.format("%06d", (int) (Math.random() * 900000) + 100000);
             log.info("Generated OTP for transaction: {} - OTP: {}", transactionId, otp);
 
             //Store OTP in redis which will be expired in 5 minutes
             String otpKey = "verification:otp:" + transactionId;
             redisTemplate.opsForValue().set(otpKey, otp, OTP_EXPIRY_MINUTES, TimeUnit.MINUTES);
-
-            //Update Status
-            transaction.setStatus(TransactionStatus.PENDING_VERIFICATION);
-            transactionRepository.save(transaction);
 
             log.info("OTP generated for transaction: {} expires in {} min",  transactionId, OTP_EXPIRY_MINUTES);
 
@@ -82,6 +89,18 @@ public class TransactionEventConsumer {
 
         } catch (Exception e) {
             log.error("Error processing fraud check result", e);
+        }
+    }
+
+    @KafkaListener(topics = "fraud.check.failed")
+    public void consumeFraudCheckFailed(@Payload Map<String, Object> payload) {
+        try {
+            String transactionId = (String) payload.get("transactionId");
+            String reason = (String) payload.get("reason");
+            log.warn("Fraud check failed - transaction: {} reason: {} - compensating", transactionId, reason);
+            transactionService.processFraudCheckFailure(transactionId, reason);
+        } catch (Exception e) {
+            log.error("Error processing fraud check failure", e);
         }
     }
 }
