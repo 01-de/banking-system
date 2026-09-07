@@ -25,6 +25,9 @@ public class Payment {
     private String stripePaymentIntentId;
 
     @Column(nullable = false)
+    private String userId;
+
+    @Column(nullable = false)
     private String accountNumber;
 
     @Column(nullable = false, precision = 15, scale = 2)

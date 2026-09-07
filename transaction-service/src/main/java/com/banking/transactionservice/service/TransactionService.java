@@ -16,6 +16,9 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -46,7 +49,7 @@ public class TransactionService {
     private static final String TRANSACTION_REFUNDED_TOPIC = "transaction.refunded";
     private static final String TRANSACTION_FRAUD_DETECTED_TOPIC = "fraud.detected";
 
-    public TransactionResponse transfer(@RequestBody TransferRequest request) {
+    public TransactionResponse transfer(@RequestBody TransferRequest request, String userId) {
         if (request.getIdempotencyKey() != null) {
             Optional<Transaction> existing = transactionRepository.findByIdempotencyKey(request.getIdempotencyKey());
             if (existing.isPresent()) {
@@ -58,6 +61,7 @@ public class TransactionService {
         log.info("SAGA START - Transfer: {} -> {} amount: {}", request.getSenderAccountNumber(), request.getReceiverAccountNumber(), request.getAmount());
         accountServiceClient.deductBalance(request.getSenderAccountNumber(), request.getAmount());
         Transaction transaction = new Transaction();
+        transaction.setUserId(userId);
         transaction.setSenderAccountNumber(request.getSenderAccountNumber());
         transaction.setReceiverAccountNumber(request.getReceiverAccountNumber());
         transaction.setAmount(request.getAmount());
@@ -81,19 +85,29 @@ public class TransactionService {
         return mapToResponse(saved);
     }
 
-    public TransactionResponse getTransactionById(@PathVariable String transactionId) {
+    public TransactionResponse getTransactionById(@PathVariable String transactionId, Authentication authentication) {
         Transaction transaction = transactionRepository.findById(transactionId).orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+        requireOwnerOrAdmin(transaction, authentication);
         return mapToResponse(transaction);
     }
 
-    public List<TransactionResponse> getTransactionHistory(@PathVariable String accountNumber) {
+    public List<TransactionResponse> getTransactionHistory(@PathVariable String accountNumber, Authentication authentication) {
         List<Transaction> transactions = transactionRepository.findBySenderAccountNumberOrReceiverAccountNumberOrderByCreatedAtDesc(accountNumber, accountNumber);
+        if (!isAdmin(authentication)) {
+            // transaction-service only knows the initiating user's id (denormalized at transfer
+            // time), not the receiving account's owner - so non-admins only see transactions
+            // they themselves initiated, not incoming transfers.
+            transactions = transactions.stream()
+                    .filter(t -> t.getUserId().equals(authentication.getName()))
+                    .collect(Collectors.toList());
+        }
         return transactions.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    public TransactionResponse verifyOTP(String transactionID, String otp) {
+    public TransactionResponse verifyOTP(String transactionID, String otp, Authentication authentication) {
         log.info("OTP verification for the transaction: {} otp: {}", transactionID, otp);
         Transaction transaction = transactionRepository.findById(transactionID).orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+        requireOwnerOrAdmin(transaction, authentication);
 
         if (transaction.getStatus() != TransactionStatus.PENDING_VERIFICATION) {
             log.warn("Transaction {} not PENDING_VERIFICATION - already resolved, skipping", transactionID);
@@ -153,6 +167,21 @@ public class TransactionService {
                 log.warn("Transaction {} already resolved concurrently - skipping expiry compensation", transactionId);
             }
         });
+    }
+
+    private void requireOwnerOrAdmin(Transaction transaction, Authentication authentication) {
+        if (isAdmin(authentication)) {
+            return;
+        }
+        if (!transaction.getUserId().equals(authentication.getName())) {
+            throw new AccessDeniedException("You do not have access to transaction: " + transaction.getId());
+        }
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
     }
 
     private void compensateTransaction(Transaction transaction, String reason) {

@@ -8,10 +8,15 @@ import com.banking.accountservice.entity.AccountType;
 import com.banking.accountservice.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -20,13 +25,14 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private static final SecureRandom secureRandom = new SecureRandom();
 
-    public AccountResponse createAccount(CreateAccountRequest request) {
+    public AccountResponse createAccount(CreateAccountRequest request, String userId) {
         log.info("Creating account request for:{}", request.getEmail());
         if (accountRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Account already exists for email: " + request.getEmail());
         }
 
         Account account = new Account();
+        account.setUserId(userId);
         account.setAccountHolderName(request.getAccountHolderName());
         account.setEmail(request.getEmail());
         account.setPhone(request.getPhone());
@@ -41,14 +47,34 @@ public class AccountService {
 
     }
 
-    public AccountResponse getAccount(String accountNumber) {
+    public List<AccountResponse> getMyAccounts(Authentication authentication) {
+        return accountRepository.findByUserId(authentication.getName()).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public AccountResponse getAccount(String accountNumber, Authentication authentication) {
         Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new RuntimeException("Account not found for accountNumber: " + accountNumber));
+        requireOwnerOrAdmin(account, authentication);
         return mapToResponse(account);
     }
 
-    public BigDecimal getBalance(String accountNumber) {
+    public BigDecimal getBalance(String accountNumber, Authentication authentication) {
         Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new RuntimeException("Account not found for accountNumber: " + accountNumber));
+        requireOwnerOrAdmin(account, authentication);
         return account.getBalance();
+    }
+
+    private void requireOwnerOrAdmin(Account account, Authentication authentication) {
+        boolean isAdminOrService = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ROLE_SERVICE"));
+        if (isAdminOrService) {
+            return;
+        }
+        if (!account.getUserId().equals(authentication.getName())) {
+            throw new AccessDeniedException("You do not have access to account: " + account.getAccountNumber());
+        }
     }
 
     // Block account called by Fraud detection via Kafka

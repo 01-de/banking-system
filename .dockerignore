@@ -1,0 +1,7 @@
+**/target/
+**/.git
+**/.idea
+**/*.env
+**/keys/
+**/.mvn/wrapper/maven-wrapper.jar
+**/HELP.md

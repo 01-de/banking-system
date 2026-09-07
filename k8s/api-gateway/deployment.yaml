@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: banking-system
+  labels:
+    app: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: ghcr.io/01-de/banking-system-api-gateway:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_HOST }
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_PORT }
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: REDIS_PASSWORD }
+            - name: REDIS_SSL_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_SSL_ENABLED }
+            - name: ACCOUNT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: ACCOUNT_SERVICE_URL }
+            - name: TRANSACTION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: TRANSACTION_SERVICE_URL }
+            - name: PAYMENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: PAYMENT_SERVICE_URL }
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: AUTH_SERVICE_URL }
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: JWT_PUBLIC_KEY }
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10

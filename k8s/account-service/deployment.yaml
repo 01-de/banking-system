@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  namespace: banking-system
+  labels:
+    app: account-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+        - name: account-service
+          image: ghcr.io/01-de/banking-system-account-service:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: ACCOUNT_DB_URL }
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: DB_USERNAME }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: DB_PASSWORD }
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: KAFKA_SECURITY_PROTOCOL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SECURITY_PROTOCOL }
+            - name: KAFKA_SASL_MECHANISM
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SASL_MECHANISM }
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_USERNAME }
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_PASSWORD }
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: JWT_PUBLIC_KEY }
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10

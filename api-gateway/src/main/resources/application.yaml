@@ -3,8 +3,11 @@ spring:
     name: api-gateway
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
   cloud:
     gateway:
       server:
@@ -23,7 +26,7 @@ spring:
                   - "*"
           routes:
             - id: account-service
-              uri: http://localhost:8081
+              uri: ${ACCOUNT_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/v1/accounts/**
               filters:
@@ -33,7 +36,7 @@ spring:
                     redis-rate-limiter.burstCapacity: 20
 
             - id: transaction-service
-              uri: http://localhost:8082
+              uri: ${TRANSACTION_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/transactions/**
               filters:
@@ -43,7 +46,7 @@ spring:
                     redis-rate-limiter.burstCapacity: 20
 
             - id: payment-service
-              uri: http://localhost:8083
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/v1/payments/**
               filters:
@@ -51,6 +54,19 @@ spring:
                   args:
                     redis-rate-limiter.replenishRate: 5
                     redis-rate-limiter.burstCapacity: 20
+
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/auth/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 5
+                    redis-rate-limiter.burstCapacity: 10
+
+jwt:
+  public-key: ${JWT_PUBLIC_KEY}
 
 server:
   port: 8080

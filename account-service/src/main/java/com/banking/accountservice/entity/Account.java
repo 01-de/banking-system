@@ -24,6 +24,9 @@ public class Account {
     private String id;
 
     @Column(nullable = false)
+    private String userId;
+
+    @Column(nullable = false)
     private String accountHolderName;
 
     @Column(nullable = false, unique = true)
