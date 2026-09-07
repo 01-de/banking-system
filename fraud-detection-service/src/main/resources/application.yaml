@@ -46,6 +46,14 @@ account:
   service:
     url: http://localhost:8081
 
+auth:
+  service:
+    url: http://localhost:8086
+
+internal:
+  service-id: fraud-detection-service
+  service-secret: ${FRAUD_DETECTION_SERVICE_SECRET}
+
 
 management:
   endpoints:

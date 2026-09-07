@@ -51,6 +51,17 @@ account:
   service:
     url: http://localhost:8081
 
+auth:
+  service:
+    url: http://localhost:8086
+
+jwt:
+  public-key: ${JWT_PUBLIC_KEY}
+
+internal:
+  service-id: transaction-service
+  service-secret: ${TRANSACTION_SERVICE_SECRET}
+
 
 management:
   endpoints:

@@ -19,6 +19,9 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import repository.PaymentRepository;
 
@@ -45,7 +48,7 @@ public class PaymentService {
         Stripe.apiKey = secretKey;
     }
 
-    public PaymentOrderResponse createPaymentOrder(CreatePaymentRequest request) throws StripeException {
+    public PaymentOrderResponse createPaymentOrder(CreatePaymentRequest request, String userId) throws StripeException {
         log.info("Creating Payment Order for account: {} amount: {}", request.getAccountNumber(), request.getAmount());
         long convertedAmount = request.getAmount().multiply(java.math.BigDecimal.valueOf(100)).longValue();
 
@@ -61,6 +64,7 @@ public class PaymentService {
 
         Payment payment = new Payment();
         payment.setStripePaymentIntentId(paymentIntent.getId());
+        payment.setUserId(userId);
         payment.setAccountNumber(request.getAccountNumber());
         payment.setAmount(request.getAmount());
         payment.setCurrency(CURRENCY);
@@ -72,9 +76,10 @@ public class PaymentService {
         return new PaymentOrderResponse(savedPayment.getId(), paymentIntent.getId(), request.getAmount(), CURRENCY, "CREATED", paymentIntent.getClientSecret());
     }
 
-    public PaymentStatusResponse getPayment(String paymentId) {
+    public PaymentStatusResponse getPayment(String paymentId, Authentication authentication) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Payment not found: " + paymentId));
+        requireOwnerOrAdmin(payment, authentication);
 
         return new PaymentStatusResponse(
                 payment.getId(),
@@ -88,6 +93,18 @@ public class PaymentService {
                 payment.getCreatedAt(),
                 payment.getUpdatedAt()
         );
+    }
+
+    private void requireOwnerOrAdmin(Payment payment, Authentication authentication) {
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+        if (isAdmin) {
+            return;
+        }
+        if (!payment.getUserId().equals(authentication.getName())) {
+            throw new AccessDeniedException("You do not have access to payment: " + payment.getId());
+        }
     }
 
     public void handleWebHook(String payload, String signature) {

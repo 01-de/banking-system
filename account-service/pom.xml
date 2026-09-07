@@ -55,6 +55,19 @@
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.banking</groupId>
+			<artifactId>auth-common</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
@@ -104,6 +117,15 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<environmentVariables>
+						<JWT_PUBLIC_KEY>-----BEGIN PUBLIC KEY-----&#10;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn4Nvb89MQcf0k/HTQvS7&#10;vsoTXqwawFxh7KZpmnEhUE1WRq3RI3ei/Y6mVm+UPhGot1jjHy3ZICnYonDLYZzV&#10;CLPXFbvQnYKeDo0mpyPKUGUDIBGUN9WQK9V4eNv+rnAun6K+5XqxG25MVAzyatc1&#10;yE5U7L8NjvEEej9XSVYJYcYDs51g2Sjuahv5k0hm7J412WZRTd0dx/PPs1pNnRHJ&#10;+HTGmy0ed3BgX7nXrXBNhWvZOAeKqbzxIgoVk2d6saFX7OM+a/Q/k0gBdmp5y/re&#10;fPKtStePDPyJ6rQ4WgA1QZ+mmC0NQ7uyT67dCrev62e85RFgoyVmerPZRrHT8O2x&#10;XwIDAQAB&#10;-----END PUBLIC KEY-----</JWT_PUBLIC_KEY>
+					</environmentVariables>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
