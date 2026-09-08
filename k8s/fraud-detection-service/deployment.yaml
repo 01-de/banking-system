@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-detection-service
+  namespace: banking-system
+  labels:
+    app: fraud-detection-service
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud-detection-service
+  template:
+    metadata:
+      labels:
+        app: fraud-detection-service
+    spec:
+      containers:
+        - name: fraud-detection-service
+          image: ghcr.io/01-de/banking-system-fraud-detection-service:latest
+          ports:
+            - containerPort: 8084
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_HOST }
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_PORT }
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: REDIS_PASSWORD }
+            - name: REDIS_SSL_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_SSL_ENABLED }
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: KAFKA_SECURITY_PROTOCOL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SECURITY_PROTOCOL }
+            - name: KAFKA_SASL_MECHANISM
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SASL_MECHANISM }
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_USERNAME }
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_PASSWORD }
+            - name: ACCOUNT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: ACCOUNT_SERVICE_URL }
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: AUTH_SERVICE_URL }
+            - name: FRAUD_DETECTION_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: FRAUD_DETECTION_SERVICE_SECRET }
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            periodSeconds: 10

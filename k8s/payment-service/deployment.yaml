@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: banking-system
+  labels:
+    app: payment-service
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: ghcr.io/01-de/banking-system-payment-service:latest
+          ports:
+            - containerPort: 8083
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: PAYMENT_DB_URL }
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: DB_USERNAME }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: DB_PASSWORD }
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: KAFKA_SECURITY_PROTOCOL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SECURITY_PROTOCOL }
+            - name: KAFKA_SASL_MECHANISM
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SASL_MECHANISM }
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_USERNAME }
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_PASSWORD }
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: JWT_PUBLIC_KEY }
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: STRIPE_SECRET_KEY }
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: STRIPE_WEBHOOK_SECRET }
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8083
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8083
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8083
+            periodSeconds: 10

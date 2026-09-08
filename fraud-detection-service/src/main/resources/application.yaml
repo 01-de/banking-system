@@ -3,11 +3,18 @@ spring:
     name: fraud-detection-service
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    properties:
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+      sasl.mechanism: ${KAFKA_SASL_MECHANISM:PLAIN}
+      sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="${KAFKA_USERNAME:}" password="${KAFKA_PASSWORD:}";
     consumer:
       group-id: fraud-service-group
       auto-offset-reset: earliest
@@ -44,7 +51,15 @@ fraud:
 
 account:
   service:
-    url: http://localhost:8081
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8081}
+
+auth:
+  service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8086}
+
+internal:
+  service-id: fraud-detection-service
+  service-secret: ${FRAUD_DETECTION_SERVICE_SECRET}
 
 
 management:

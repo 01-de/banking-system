@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: banking-system
+  labels:
+    app: notification-service
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: ghcr.io/01-de/banking-system-notification-service:latest
+          ports:
+            - containerPort: 8085
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: KAFKA_SECURITY_PROTOCOL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SECURITY_PROTOCOL }
+            - name: KAFKA_SASL_MECHANISM
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SASL_MECHANISM }
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_USERNAME }
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_PASSWORD }
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            periodSeconds: 10

@@ -19,6 +19,10 @@ public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+
+    @Column(nullable = false)
+    private String userId;
+
     @Column(nullable = false)
     private String senderAccountNumber;
 

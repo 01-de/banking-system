@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+  namespace: banking-system
+  labels:
+    app: transaction-service
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+        - name: transaction-service
+          image: ghcr.io/01-de/banking-system-transaction-service:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: TRANSACTION_DB_URL }
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: DB_USERNAME }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: DB_PASSWORD }
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_HOST }
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_PORT }
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: REDIS_PASSWORD }
+            - name: REDIS_SSL_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_SSL_ENABLED }
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: KAFKA_SECURITY_PROTOCOL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SECURITY_PROTOCOL }
+            - name: KAFKA_SASL_MECHANISM
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: KAFKA_SASL_MECHANISM }
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_USERNAME }
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: KAFKA_PASSWORD }
+            - name: ACCOUNT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: ACCOUNT_SERVICE_URL }
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: AUTH_SERVICE_URL }
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: JWT_PUBLIC_KEY }
+            - name: TRANSACTION_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: TRANSACTION_SERVICE_SECRET }
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            periodSeconds: 10

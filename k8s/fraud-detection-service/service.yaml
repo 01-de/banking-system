@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-detection-service
+  namespace: banking-system
+spec:
+  selector:
+    app: fraud-detection-service
+  ports:
+    - port: 8084
+      targetPort: 8084
+  type: ClusterIP

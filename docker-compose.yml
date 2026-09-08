@@ -2,6 +2,24 @@ version: '3.8'
 
 services:
 
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - banking-network
 
   redis:
     image: redis:latest
@@ -9,18 +27,6 @@ services:
     command: redis-server --notify-keyspace-events Ex
     ports:
       - "6379:6379"
-    networks:
-      - banking-network
-
-  mysql:
-    image: mysql:8.0
-    container_name: mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
     networks:
       - banking-network
 
@@ -32,7 +38,6 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     networks:
       - banking-network
-
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -52,8 +57,179 @@ services:
     networks:
       - banking-network
 
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: auth-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/bank_auth_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      TRANSACTION_SERVICE_SECRET: ${TRANSACTION_SERVICE_SECRET}
+      FRAUD_DETECTION_SERVICE_SECRET: ${FRAUD_DETECTION_SERVICE_SECRET}
+    ports:
+      - "8086:8086"
+    networks:
+      - banking-network
+
+  account-service:
+    build:
+      context: .
+      dockerfile: account-service/Dockerfile
+    container_name: account-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/bank_account_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: admin
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+    ports:
+      - "8081:8081"
+    networks:
+      - banking-network
+
+  transaction-service:
+    build:
+      context: .
+      dockerfile: transaction-service/Dockerfile
+    container_name: transaction-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      account-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/bank_transaction_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ACCOUNT_SERVICE_URL: http://account-service:8081
+      AUTH_SERVICE_URL: http://auth-service:8086
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      TRANSACTION_SERVICE_SECRET: ${TRANSACTION_SERVICE_SECRET}
+    ports:
+      - "8082:8082"
+    networks:
+      - banking-network
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: payment-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/bank_payment_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: admin
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+    ports:
+      - "8083:8083"
+    networks:
+      - banking-network
+
+  fraud-detection-service:
+    build:
+      context: .
+      dockerfile: fraud-detection-service/Dockerfile
+    container_name: fraud-detection-service
+    depends_on:
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      account-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ACCOUNT_SERVICE_URL: http://account-service:8081
+      AUTH_SERVICE_URL: http://auth-service:8086
+      FRAUD_DETECTION_SERVICE_SECRET: ${FRAUD_DETECTION_SERVICE_SECRET}
+    ports:
+      - "8084:8084"
+    networks:
+      - banking-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: notification-service
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    ports:
+      - "8085:8085"
+    networks:
+      - banking-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: api-gateway
+    depends_on:
+      redis:
+        condition: service_started
+      account-service:
+        condition: service_started
+      transaction-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ACCOUNT_SERVICE_URL: http://account-service:8081
+      TRANSACTION_SERVICE_URL: http://transaction-service:8082
+      PAYMENT_SERVICE_URL: http://payment-service:8083
+      AUTH_SERVICE_URL: http://auth-service:8086
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+    ports:
+      - "8080:8080"
+    networks:
+      - banking-network
+
 volumes:
-  mysql-data:
+  postgres-data:
 
 networks:
   banking-network:
