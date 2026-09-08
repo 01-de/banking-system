@@ -92,15 +92,13 @@ public class TransactionService {
     }
 
     public List<TransactionResponse> getTransactionHistory(@PathVariable String accountNumber, Authentication authentication) {
-        List<Transaction> transactions = transactionRepository.findBySenderAccountNumberOrReceiverAccountNumberOrderByCreatedAtDesc(accountNumber, accountNumber);
         if (!isAdmin(authentication)) {
-            // transaction-service only knows the initiating user's id (denormalized at transfer
-            // time), not the receiving account's owner - so non-admins only see transactions
-            // they themselves initiated, not incoming transfers.
-            transactions = transactions.stream()
-                    .filter(t -> t.getUserId().equals(authentication.getName()))
-                    .collect(Collectors.toList());
+            String ownerId = accountServiceClient.getAccount(accountNumber).getUserId();
+            if (!ownerId.equals(authentication.getName())) {
+                throw new AccessDeniedException("You do not have access to account: " + accountNumber);
+            }
         }
+        List<Transaction> transactions = transactionRepository.findBySenderAccountNumberOrReceiverAccountNumberOrderByCreatedAtDesc(accountNumber, accountNumber);
         return transactions.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 

@@ -125,6 +125,7 @@ public class AccountService {
     private AccountResponse mapToResponse(Account savedAccount) {
         AccountResponse accountResponse = new AccountResponse();
         accountResponse.setId(savedAccount.getId());
+        accountResponse.setUserId(savedAccount.getUserId());
         accountResponse.setAccountHolderName(savedAccount.getAccountHolderName());
         accountResponse.setAccountNumber(savedAccount.getAccountNumber());
         accountResponse.setEmail(savedAccount.getEmail());

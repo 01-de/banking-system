@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 public class AccountResponse {
     private String id;
 
+    private String userId;
+
     private String accountHolderName;
 
     private String accountNumber;
