@@ -17,6 +17,7 @@ spring:
               '[/**]':
                 allowedOrigins:
                   - "http://localhost:5173"
+                  - "https://banking-system-frontend-gamma.vercel.app"
                 allowedMethods:
                   - GET
                   - POST

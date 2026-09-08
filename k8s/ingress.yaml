@@ -3,10 +3,17 @@ kind: Ingress
 metadata:
   name: banking-system-ingress
   namespace: banking-system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - 44.215.226.222.nip.io
+      secretName: banking-system-tls
   rules:
-    - http:
+    - host: 44.215.226.222.nip.io
+      http:
         paths:
           - path: /
             pathType: Prefix
