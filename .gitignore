@@ -1,2 +1,4 @@
 .env
 .DS_Store
+/qodana.yaml
+/.github/workflows/qodana_code_quality.yml
