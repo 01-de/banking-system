@@ -79,6 +79,7 @@ jobs:
         run: |
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/configmap-infra.yaml
+          kubectl apply -f k8s/cluster-issuer.yaml
       - name: Create or update app-secrets
         run: |
           kubectl create secret generic app-secrets \
