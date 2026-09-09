@@ -103,4 +103,18 @@ public class TransactionEventConsumer {
             log.error("Error processing fraud check failure", e);
         }
     }
+
+    @KafkaListener(topics = "payment.completed")
+    public void consumePaymentCompleted(@Payload Map<String, Object> payload) {
+        try {
+            String paymentId = (String) payload.get("paymentId");
+            String userId = (String) payload.get("userId");
+            String accountNumber = (String) payload.get("accountNumber");
+            String stripePaymentIntentId = (String) payload.get("stripePaymentIntentId");
+            java.math.BigDecimal amount = new java.math.BigDecimal(payload.get("amount").toString());
+            transactionService.processDeposit(paymentId, accountNumber, userId, amount, stripePaymentIntentId);
+        } catch (Exception e) {
+            log.error("Error processing payment completed event", e);
+        }
+    }
 }

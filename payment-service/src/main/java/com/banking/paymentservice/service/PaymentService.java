@@ -147,6 +147,7 @@ public class PaymentService {
 
             Map<String, Object> eventPayload = new HashMap<>();
             eventPayload.put("paymentId", payment.getId());
+            eventPayload.put("userId", payment.getUserId());
             eventPayload.put("accountNumber", payment.getAccountNumber());
             eventPayload.put("amount", payment.getAmount());
             eventPayload.put("stripePaymentIntentId", paymentIntent.getId());

@@ -135,6 +135,30 @@ public class TransactionService {
         return mapToResponse(transaction);
     }
 
+    public void processDeposit(String paymentId, String accountNumber, String userId, java.math.BigDecimal amount, String stripePaymentIntentId) {
+        String idempotencyKey = "payment:" + paymentId;
+        if (transactionRepository.findByIdempotencyKey(idempotencyKey).isPresent()) {
+            log.info("Deposit for payment {} already recorded - ignoring duplicate delivery", paymentId);
+            return;
+        }
+
+        accountServiceClient.creditBalance(accountNumber, amount);
+
+        Transaction transaction = new Transaction();
+        transaction.setUserId(userId);
+        transaction.setSenderAccountNumber("EXTERNAL");
+        transaction.setReceiverAccountNumber(accountNumber);
+        transaction.setAmount(amount);
+        transaction.setStatus(TransactionStatus.COMPLETED);
+        transaction.setType(TransactionType.DEPOSIT);
+        transaction.setDescription("Stripe top-up");
+        transaction.setReferenceNumber(stripePaymentIntentId);
+        transaction.setIdempotencyKey(idempotencyKey);
+        transaction.setCompletedAt(LocalDateTime.now());
+        transactionRepository.save(transaction);
+        log.info("Recorded deposit transaction for payment: {} account: {}", paymentId, accountNumber);
+    }
+
     public void processCleanResult(String transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId).orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
         if (transaction.getStatus() != TransactionStatus.PROCESSING) {
