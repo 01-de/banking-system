@@ -77,6 +77,7 @@ public class NotificationService {
         }
     }
 
+    @KafkaListener(topics = "payment.failed")
     public void consumePaymentFailed(@Payload Map<String, Object> payload) {
         try {
             String accountNumber = (String) payload.get("accountNumber");

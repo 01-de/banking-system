@@ -219,6 +219,7 @@ public class TransactionService {
         refundEvent.put("transactionId", transaction.getId());
         refundEvent.put("senderAccountNumber", transaction.getSenderAccountNumber());
         refundEvent.put("amount", transaction.getAmount());
+        refundEvent.put("reason", reason);
         kafkaTemplate.send(TRANSACTION_REFUNDED_TOPIC, refundEvent);
         log.info("SAGA COMPENSATION COMPLETE: {} refunded to {}", transaction.getAmount(), transaction.getSenderAccountNumber());
     }
