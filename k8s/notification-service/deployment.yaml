@@ -38,6 +38,18 @@ spec:
             - name: KAFKA_PASSWORD
               valueFrom:
                 secretKeyRef: { name: app-secrets, key: KAFKA_PASSWORD }
+            - name: MAIL_HOST
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: MAIL_HOST }
+            - name: MAIL_PORT
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: MAIL_PORT }
+            - name: MAIL_USERNAME
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: MAIL_USERNAME }
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: MAIL_PASSWORD }
           resources:
             requests:
               cpu: 250m

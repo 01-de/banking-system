@@ -220,6 +220,7 @@ public class TransactionService {
         refundEvent.put("senderAccountNumber", transaction.getSenderAccountNumber());
         refundEvent.put("amount", transaction.getAmount());
         refundEvent.put("reason", reason);
+        refundEvent.put("email", accountServiceClient.getAccount(transaction.getSenderAccountNumber()).getEmail());
         kafkaTemplate.send(TRANSACTION_REFUNDED_TOPIC, refundEvent);
         log.info("SAGA COMPENSATION COMPLETE: {} refunded to {}", transaction.getAmount(), transaction.getSenderAccountNumber());
     }
@@ -231,6 +232,7 @@ public class TransactionService {
         fraudEvent.put("accountNumber", transaction.getSenderAccountNumber());
         fraudEvent.put("amount", transaction.getAmount());
         fraudEvent.put("reason", reason);
+        fraudEvent.put("email", accountServiceClient.getAccount(transaction.getSenderAccountNumber()).getEmail());
         kafkaTemplate.send(TRANSACTION_FRAUD_DETECTED_TOPIC, transaction.getSenderAccountNumber(), fraudEvent);
         log.warn("fraud.detected published - account: {} will be blocked", transaction.getSenderAccountNumber());
 
@@ -246,7 +248,9 @@ public class TransactionService {
         transaction.setCompletedAt(LocalDateTime.now());
         transactionRepository.save(transaction);
 
-        TransactionCompletedEvent completedEvent = new TransactionCompletedEvent(transaction.getId(), transaction.getSenderAccountNumber(), transaction.getReceiverAccountNumber(), transaction.getAmount(), transaction.getDescription());
+        String senderEmail = accountServiceClient.getAccount(transaction.getSenderAccountNumber()).getEmail();
+        String receiverEmail = accountServiceClient.getAccount(transaction.getReceiverAccountNumber()).getEmail();
+        TransactionCompletedEvent completedEvent = new TransactionCompletedEvent(transaction.getId(), transaction.getSenderAccountNumber(), transaction.getReceiverAccountNumber(), transaction.getAmount(), transaction.getDescription(), senderEmail, receiverEmail);
         kafkaTemplate.send(TRANSACTION_COMPLETED_TOPIC, completedEvent);
 
         log.info("SAGA COMPLETED transaction: {}", transaction.getId());

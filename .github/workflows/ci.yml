@@ -63,6 +63,7 @@ jobs:
         -----END PUBLIC KEY-----
       TRANSACTION_SERVICE_SECRET: ci-test-transaction-service-secret
       FRAUD_DETECTION_SERVICE_SECRET: ci-test-fraud-detection-service-secret
+      PAYMENT_SERVICE_SECRET: ci-test-payment-service-secret
       STRIPE_SECRET_KEY: sk_test_ci_dummy
       STRIPE_WEBHOOK_SECRET: whsec_ci_dummy
     strategy:

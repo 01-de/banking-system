@@ -56,6 +56,9 @@ spec:
             - name: FRAUD_DETECTION_SERVICE_SECRET
               valueFrom:
                 secretKeyRef: { name: app-secrets, key: FRAUD_DETECTION_SERVICE_SECRET }
+            - name: PAYMENT_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: PAYMENT_SERVICE_SECRET }
           resources:
             requests:
               cpu: 250m

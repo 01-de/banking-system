@@ -1,7 +1,10 @@
 package com.banking.notificationservice.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
@@ -9,17 +12,22 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class NotificationService {
+
+    private final JavaMailSender mailSender;
+
     @KafkaListener(topics = "transaction.otp.generated")
     public void consumeOtpGeneration(@Payload Map<String, Object> payload) {
         try {
             String transactionId = (String) payload.get("transactionId");
             String accountNumber = (String) payload.get("accountNumber");
+            String email = (String) payload.get("email");
             String otp = (String) payload.get("otp");
             String amount = payload.get("amount").toString();
             String reason = (String) payload.get("reason");
 
-            sendAlert(accountNumber, "TRANSACTION VERIFICATION REQUIRED", String.format("Suspicious activity detected on your account. " + "Reason: %s " + "A transaction of %s is pending verification. " + "Your OTP is: %s. Valid for 5 minutes. " + "If this wasn't you - ignore this message.", reason, amount, otp));
+            sendAlert(email, "TRANSACTION VERIFICATION REQUIRED", String.format("Suspicious activity detected on your account. " + "Reason: %s " + "A transaction of %s is pending verification. " + "Your OTP is: %s. Valid for 5 minutes. " + "If this wasn't you - ignore this message.", reason, amount, otp));
         } catch (Exception e) {
             log.error("Error occurred while consuming OTP generation message", e);
         }
@@ -28,14 +36,16 @@ public class NotificationService {
     @KafkaListener(topics = "transaction.completed")
     public void consumeTransactionCompletion(@Payload Map<String, Object> payload) {
         try {
-            String senderAccount =  (String) payload.get("senderAccountNumber");
-            String receiverAccount =  (String) payload.get("receiverAccountNumber");
+            String senderAccount = (String) payload.get("senderAccountNumber");
+            String receiverAccount = (String) payload.get("receiverAccountNumber");
+            String senderEmail = (String) payload.get("senderEmail");
+            String receiverEmail = (String) payload.get("receiverEmail");
             String amount = payload.get("amount").toString();
             //Debit alert
-            sendAlert(senderAccount, "DEBIT ALERT", String.format("%s debited from account %s", amount, senderAccount));
+            sendAlert(senderEmail, "DEBIT ALERT", String.format("%s debited from account %s", amount, senderAccount));
 
             // Credit alert
-            sendAlert(receiverAccount, "CREDIT ALERT", String.format("%s credited to account %s", amount, receiverAccount));
+            sendAlert(receiverEmail, "CREDIT ALERT", String.format("%s credited to account %s", amount, receiverAccount));
 
         } catch (Exception e) {
             log.error("Error occurred while consuming transaction notification completion message", e);
@@ -46,8 +56,9 @@ public class NotificationService {
     public void consumeFraudDetected(@Payload Map<String, Object> payload) {
         try {
             String accountNumber = (String) payload.get("accountNumber");
+            String email = (String) payload.get("email");
             String reason = (String) payload.get("reason");
-            sendAlert(accountNumber, "SUSPICIOUS ACTIVITY DETECTED", String.format("Your account %s has been blocked. " + "Reason: %s" + "Please contact your bank immediately.", accountNumber, reason));
+            sendAlert(email, "SUSPICIOUS ACTIVITY DETECTED", String.format("Your account %s has been blocked. " + "Reason: %s" + "Please contact your bank immediately.", accountNumber, reason));
         } catch (Exception e) {
             log.error("Error occurred while consuming fraud detection message", e);
         }
@@ -56,10 +67,11 @@ public class NotificationService {
     @KafkaListener(topics = "transaction.refunded")
     public void consumeTransactionRefunded(@Payload Map<String, Object> payload) {
         try {
-            String senderAccount =  (String) payload.get("senderAccountNumber");
+            String senderAccount = (String) payload.get("senderAccountNumber");
+            String email = (String) payload.get("email");
             String amount = payload.get("amount").toString();
             String reason = (String) payload.get("reason");
-            sendAlert(senderAccount, "REFUND PROCESSED", String.format("A transaction of %s has been refunded to your account. " + "Reason: %s", amount, reason));
+            sendAlert(email, "REFUND PROCESSED", String.format("A transaction of %s has been refunded to your account. " + "Reason: %s", amount, reason));
         } catch (Exception e) {
             log.error("Error occurred while consuming transaction refunded message", e);
         }
@@ -69,9 +81,10 @@ public class NotificationService {
     public void consumePaymentCompleted(@Payload Map<String, Object> payload) {
         try {
             String accountNumber = (String) payload.get("accountNumber");
+            String email = (String) payload.get("email");
             String amount = payload.get("amount").toString();
-            String razorpayPaymentId = (String) payload.get("razorpayPaymentId");
-            sendAlert(accountNumber, "PAYMENT COMPLETED", String.format("A payment of %s has been completed for your account." + "Razorpay ID: %s", amount, razorpayPaymentId));
+            String stripePaymentIntentId = (String) payload.get("stripePaymentIntentId");
+            sendAlert(email, "PAYMENT COMPLETED", String.format("A payment of %s has been completed for your account. " + "Stripe payment ID: %s", amount, stripePaymentIntentId));
         } catch (Exception e) {
             log.error("Error occurred while consuming payment notification message", e);
         }
@@ -81,19 +94,29 @@ public class NotificationService {
     public void consumePaymentFailed(@Payload Map<String, Object> payload) {
         try {
             String accountNumber = (String) payload.get("accountNumber");
+            String email = (String) payload.get("email");
             String amount = payload.get("amount").toString();
             String reason = (String) payload.get("reason");
-            sendAlert(accountNumber, "PAYMENT FAILED", String.format("A payment of %s has failed for your account. " + "Reason: %s", amount, reason));
+            sendAlert(email, "PAYMENT FAILED", String.format("A payment of %s has failed for your account. " + "Reason: %s", amount, reason));
         } catch (Exception e) {
             log.error("Error occurred while consuming payment notification message", e);
         }
     }
 
-    private void sendAlert(String accountNumber, String subject, String message) {
-        log.info("--------------------------------");
-        log.info("Account number: {}", accountNumber);
-        log.info("Subject : {}", subject);
-        log.info("Message : {}", message);
-        log.info("---------------------------------");
+    private void sendAlert(String email, String subject, String message) {
+        if (email == null || email.isBlank()) {
+            log.warn("Skipping email alert - no recipient email present. Subject: {}", subject);
+            return;
+        }
+        try {
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setTo(email);
+            mailMessage.setSubject(subject);
+            mailMessage.setText(message);
+            mailSender.send(mailMessage);
+            log.info("Email sent to {} - subject: {}", email, subject);
+        } catch (Exception e) {
+            log.error("Failed to send email to {} - subject: {}", email, subject, e);
+        }
     }
 }

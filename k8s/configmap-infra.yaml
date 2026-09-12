@@ -20,3 +20,6 @@ data:
   TRANSACTION_SERVICE_URL: "http://transaction-service:8082"
   PAYMENT_SERVICE_URL: "http://payment-service:8083"
   AUTH_SERVICE_URL: "http://auth-service:8086"
+
+  MAIL_HOST: "smtp.gmail.com"
+  MAIL_PORT: "587"

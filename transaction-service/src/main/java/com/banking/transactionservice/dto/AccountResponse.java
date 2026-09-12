@@ -8,4 +8,5 @@ import lombok.NoArgsConstructor;
 public class AccountResponse {
     private String accountNumber;
     private String userId;
+    private String email;
 }

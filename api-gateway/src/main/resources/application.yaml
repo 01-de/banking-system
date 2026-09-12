@@ -24,7 +24,8 @@ spring:
                   - PUT
                   - DELETE
                 allowedHeaders:
-                  - "*"
+                  - "Authorization"
+                  - "Content-Type"
           routes:
             - id: account-service
               uri: ${ACCOUNT_SERVICE_URL:http://localhost:8081}

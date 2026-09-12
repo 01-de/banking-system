@@ -1,5 +1,6 @@
 package com.banking.paymentservice.service;
 
+import com.banking.paymentservice.client.AccountServiceClient;
 import com.banking.paymentservice.dto.CreatePaymentRequest;
 import com.banking.paymentservice.dto.PaymentOrderResponse;
 import com.banking.paymentservice.dto.PaymentStatusResponse;
@@ -17,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.access.AccessDeniedException;
@@ -32,12 +34,14 @@ import java.util.Map;
 @Slf4j
 @RequiredArgsConstructor
 @EnableJpaRepositories(basePackages = "repository")
+@EnableFeignClients(basePackages = "com.banking.paymentservice.client")
 public class PaymentService {
     private static final String PAYMENT_COMPLETED_TOPIC = "payment.completed";
     private static final String PAYMENT_FAILED_TOPIC = "payment.failed";
     private static final String CURRENCY = "usd";
     private final PaymentRepository paymentRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final AccountServiceClient accountServiceClient;
     @Value("${stripe.secret-key}")
     private String secretKey;
     @Value("${stripe.webhook-secret}")
@@ -151,6 +155,7 @@ public class PaymentService {
             eventPayload.put("accountNumber", payment.getAccountNumber());
             eventPayload.put("amount", payment.getAmount());
             eventPayload.put("stripePaymentIntentId", paymentIntent.getId());
+            eventPayload.put("email", accountServiceClient.getAccount(payment.getAccountNumber()).getEmail());
             kafkaTemplate.send(PAYMENT_COMPLETED_TOPIC, payment.getId(), eventPayload);
             log.info("Payment Completed: {}", payment.getId());
 
@@ -177,6 +182,7 @@ public class PaymentService {
             eventPayload.put("accountNumber", payment.getAccountNumber());
             eventPayload.put("amount", payment.getAmount());
             eventPayload.put("reason", "Payment Failed via Stripe");
+            eventPayload.put("email", accountServiceClient.getAccount(payment.getAccountNumber()).getEmail());
             kafkaTemplate.send(PAYMENT_FAILED_TOPIC, payment.getId(), eventPayload);
             log.warn("Payment failed: {}", payment.getId());
         } catch (Exception e) {

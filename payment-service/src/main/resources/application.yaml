@@ -13,6 +13,13 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     properties:
@@ -34,6 +41,18 @@ stripe:
 
 jwt:
   public-key: ${JWT_PUBLIC_KEY}
+
+account:
+  service:
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8081}
+
+auth:
+  service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8086}
+
+internal:
+  service-id: payment-service
+  service-secret: ${PAYMENT_SERVICE_SECRET}
 
 server:
   port: 8083

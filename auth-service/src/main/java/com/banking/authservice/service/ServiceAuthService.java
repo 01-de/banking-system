@@ -18,6 +18,9 @@ public class ServiceAuthService {
     @Value("${internal.service-credentials.fraud-detection-service.secret}")
     private String fraudDetectionServiceSecret;
 
+    @Value("${internal.service-credentials.payment-service.secret}")
+    private String paymentServiceSecret;
+
     public ServiceAuthService(JwtService jwtService) {
         this.jwtService = jwtService;
     }
@@ -26,6 +29,7 @@ public class ServiceAuthService {
         String expectedSecret = switch (request.getServiceId()) {
             case "transaction-service" -> transactionServiceSecret;
             case "fraud-detection-service" -> fraudDetectionServiceSecret;
+            case "payment-service" -> paymentServiceSecret;
             default -> null;
         };
 

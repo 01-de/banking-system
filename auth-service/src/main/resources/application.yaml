@@ -43,3 +43,5 @@ internal:
       secret: ${TRANSACTION_SERVICE_SECRET}
     fraud-detection-service:
       secret: ${FRAUD_DETECTION_SERVICE_SECRET}
+    payment-service:
+      secret: ${PAYMENT_SERVICE_SECRET}

@@ -56,6 +56,27 @@ spec:
             - name: STRIPE_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef: { name: app-secrets, key: STRIPE_WEBHOOK_SECRET }
+            - name: ACCOUNT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: ACCOUNT_SERVICE_URL }
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: AUTH_SERVICE_URL }
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_HOST }
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_PORT }
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: REDIS_PASSWORD }
+            - name: REDIS_SSL_ENABLED
+              valueFrom:
+                configMapKeyRef: { name: infra-config, key: REDIS_SSL_ENABLED }
+            - name: PAYMENT_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef: { name: app-secrets, key: PAYMENT_SERVICE_SECRET }
           resources:
             requests:
               cpu: 250m
