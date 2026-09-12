@@ -37,7 +37,7 @@ public class TransactionEventConsumer {
     public void consumeVerificationRequired(@Payload Map<String, Object> payload) {
         try {
             String transactionId = (String) payload.get("transactionId");
-            String accountNumber = (String) payload.get("accountNumber");
+            String accountNumber = (String) payload.get("senderAccountNumber");
             String reason = (String) payload.get("reason");
             log.info("Verification required - transaction: {} reason: {} ", transactionId, reason);
 
